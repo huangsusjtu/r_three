@@ -1,0 +1,1 @@
+   find ./ -type f \( -name "*.c" -o -name "*.cpp" -o -name "*.java" -o -name "*.py" -o -name "*.rs" \) -exec wc -l {} + | awk '{total += $1} END {print total}'

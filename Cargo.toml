@@ -1,0 +1,47 @@
+[package]
+name = "r-three"
+description = "A cross-platform 3D library"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+
+
+[workspace]
+resolver = "2"
+members = [
+    "r_three",
+    "r_three_macro",
+    "example/*", ]
+
+
+
+[workspace.package]
+version = "0.0.1"
+authors = ["huangsu <ximisjtu@gmail.com>"]
+edition = "2021"
+license = "MIT"
+repository = ""
+homepage = ""
+categories = ["gui"]
+keywords = ["gui", "ui", "graphics", "three", "widgets"]
+rust-version = "1.81"
+
+
+
+
+[dependencies]
+
+
+
+[workspace.dependencies]
+r-three = { version = "0.14.0-dev", path = "." }
+r_three = { version = "0.0.1", path = "./r_three" }
+r_three_macro = { version = "0.0.1", path = "./r_three_macro" }
+
