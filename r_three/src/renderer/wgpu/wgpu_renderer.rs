@@ -119,6 +119,12 @@ impl RendererInterface for WgpuRenderer {
                 })],
                 ..Default::default()
             });
+
+            {
+                scene.tree.into_iter().for_each(|node| {
+
+                });
+            }
         }
 
         self.queue.submit(iter::once(encoder.finish()));

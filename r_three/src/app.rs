@@ -1,3 +1,4 @@
+use crate::camera::CameraInterface;
 use crate::wgpu::WgpuRenderer;
 use crate::{RendererInterface, Scene};
 use std::sync::{Arc, RwLock};
@@ -9,7 +10,7 @@ use winit::window::{WindowAttributes, WindowId};
 
 pub struct App {
     renderer: Option<WgpuRenderer>,
-    scene: Arc<RwLock<Scene>>,
+    scene: Option<Arc<RwLock<Scene>>>,
 }
 
 impl App {
@@ -18,18 +19,20 @@ impl App {
 
         App {
             renderer: None,
-            scene: Arc::new(RwLock::new(Scene::new())),
+            scene: None,
         }
     }
 
-    pub fn scene(&self) -> Arc<RwLock<Scene>> {
-        self.scene.clone()
+    pub fn attach_scene(&mut self, scene: Arc<RwLock<Scene>>, camera: Box<dyn CameraInterface>) {
+        self.scene = Some(scene);
     }
 
     fn render(&mut self) {
         if let Some(renderer) = self.renderer.as_mut() {
-            let scene = self.scene.read().unwrap();
-            renderer.render(&scene).expect("renderer panic message");
+            if let Some(scene) = self.scene.clone() {
+                let scene = scene.read().unwrap();
+                renderer.render(&scene).expect("renderer panic message");
+            }
         }
     }
 }

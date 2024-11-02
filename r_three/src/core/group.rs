@@ -8,6 +8,7 @@ use std::rc::Rc;
 #[derive(object3d)]
 pub struct Group {}
 
+
 impl Group {
     pub fn new() -> Self {
         Group {
@@ -23,7 +24,7 @@ impl Group {
     }
 }
 impl Renderable for Group {
-    fn render(&mut self, context: RenderContext) -> anyhow::Result<()> {
+    fn render(&mut self, _context: RenderContext) -> anyhow::Result<()> {
         Ok(())
     }
 }

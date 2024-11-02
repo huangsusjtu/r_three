@@ -8,18 +8,18 @@ use syn::{parse, parse_macro_input, DeriveInput};
 /// Example of [function-like procedural macro][1].
 ///
 /// [1]: https://doc.rust-lang.org/reference/procedural-macros.html#function-like-procedural-macros
-#[proc_macro]
-pub fn my_macro(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    let tokens = quote! {
-        #input
-
-        struct Hello;
-    };
-
-    tokens.into()
-}
+// #[proc_macro]
+// pub fn my_macro(input: TokenStream) -> TokenStream {
+//     let input = parse_macro_input!(input as DeriveInput);
+//
+//     let tokens = quote! {
+//         #input
+//
+//         struct Hello;
+//     };
+//
+//     tokens.into()
+// }
 
 /// Example of user-defined [derive mode macro][1]
 ///
@@ -81,6 +81,14 @@ pub fn object_3d_derive(input: TokenStream) -> TokenStream {
                 return r;
             }
 
+            fn get_child_by_index(&self, index: usize) -> Rc<RefCell<Box<dyn Object3D>>> {
+                let t = self.children.get(index).unwrap().clone();
+                t
+            }
+            fn child_num(&self) -> usize {
+                return self.children.len();
+            }
+
             fn set_this(&mut self, this: Rc<RefCell<Box<dyn Object3D>>>) {
                 self.this = Some(this);
             }
@@ -92,7 +100,7 @@ pub fn object_3d_derive(input: TokenStream) -> TokenStream {
                 self.parent.clone()
             }
 
-            fn as_object(self) -> Rc<RefCell<Box<dyn Object3D>>> {
+            fn to_object(self) -> Rc<RefCell<Box<dyn Object3D>>> {
                 let t: Box<dyn Object3D> = Box::new(self);
                 let this = Rc::new(RefCell::new(t));
                 this.borrow_mut().set_this(this.clone());

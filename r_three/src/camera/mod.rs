@@ -1,5 +1,8 @@
 mod orthographic_camera;
+pub use orthographic_camera::OrthographicCamera;
+
 mod perspective_camera;
+pub use perspective_camera::PerspectiveCamera;
 
 pub trait CameraInterface {
     fn r#type(&self) -> &'static str;
