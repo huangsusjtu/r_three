@@ -1,37 +1,43 @@
-use crate::camera::CameraInterface;
-use crate::vertex::Vertex;
-use crate::wgpu::pipelines::Pipeline;
-use crate::wgpu::VertexInterface;
-use wgpu::util::DeviceExt;
-use winit::dpi::Size;
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::sync::Arc;
 
-pub struct MeshPipeline<'a> {
-    device: &'a wgpu::Device,
+use bytemuck::Pod;
+use rand::Rng;
+use wgpu::util::DeviceExt;
+
+use crate::camera::Camera;
+use crate::renderer::pipelines::Pipeline;
+use crate::vertex::{Vertex, VertexWithColor};
+use crate::VertexInterface;
+
+pub struct MeshPipeline {
+    device: Arc<wgpu::Device>,
     pipeline: wgpu::RenderPipeline,
 
     // vertex data
-    data: Option<Data>,
+    data: HashMap<u32, Data>,
 
     // uniform
-    uniform_bind_group: wgpu::BindGroup,
-    uniforms: wgpu::Buffer,
+    camera_bind_group: wgpu::BindGroup,
+    camera_buffer: wgpu::Buffer,
 }
 
-impl<'a> MeshPipeline<'a> {
-    pub fn new(device: &'a wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat) -> Self {
+impl MeshPipeline {
+    pub fn new(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>, format: wgpu::TextureFormat) -> Self {
         // uniform data format
-        let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(" uniform buffer"),
-            size: std::mem::size_of::<Uniforms>() as u64,
+        let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("camera uniform buffer"),
+            size: std::mem::size_of::<CameraUniform>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        let uniform_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("uniform bind group layout"),
+        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("camera uniform bind group layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                visibility: wgpu::ShaderStages::VERTEX,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -40,12 +46,12 @@ impl<'a> MeshPipeline<'a> {
                 count: None,
             }],
         });
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("uniform bind group"),
-            layout: &uniform_bind_group_layout,
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("camera uniform bind group"),
+            layout: &camera_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: uniforms.as_entire_binding(),
+                resource: camera_buffer.as_entire_binding(),
             }],
         });
 
@@ -58,12 +64,12 @@ impl<'a> MeshPipeline<'a> {
             });
             let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("mesh render pipeline layout"),
-                bind_group_layouts: &[&uniform_bind_group_layout],
+                bind_group_layouts: &[&camera_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Render Pipeline"),
+                label: Some("Mesh Render Pipeline"),
                 layout: Some(&render_pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: &shader,
@@ -107,18 +113,14 @@ impl<'a> MeshPipeline<'a> {
         Self {
             device,
             pipeline,
-            data: None,
-            uniform_bind_group,
-            uniforms,
+            data: Default::default(),
+            camera_bind_group,
+            camera_buffer,
         }
     }
 
-    pub fn update_mesh_data(&mut self, mesh: (Vec<Vertex>, Vec<u32>)) {
-        if let Some(old) = self.data.as_ref() {
-            old.vertex_buffer.destroy();
-            old.index_buffer.destroy();
-        }
-        //vertices of face
+    pub fn add_mesh_data<T: Pod>(&mut self, mesh: (Vec<T>, Vec<u32>)) -> anyhow::Result<u32> {
+        // vertices of face
         let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(" vertex buffer"),
             contents: bytemuck::cast_slice(&mesh.0),
@@ -131,80 +133,95 @@ impl<'a> MeshPipeline<'a> {
         });
         let num_indices = mesh.1.len() as u32;
 
-        self.data = Some(Data {
-            vertex_buffer,
-            index_buffer,
-            num_indices,
-        });
+        //   分配数据ID
+        let mut rng = rand::thread_rng();
+        let mut id: u32 = rng.gen();
+        while self.data.contains_key(&id) {
+            id = rng.gen();
+        }
+        self.data.insert(
+            id,
+            Data {
+                vertex_buffer,
+                index_buffer,
+                num_indices,
+            },
+        );
+        Ok(id)
+    }
+
+    pub fn remove_mesh_data(&mut self, id: u32) {
+        if let Some(data) = self.data.remove(&id) {
+            data.vertex_buffer.destroy();
+            data.index_buffer.destroy();
+        }
     }
 }
 
-impl<'a> Pipeline for MeshPipeline<'a> {
-    fn update(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        target_size: Size,
-        camera: &dyn CameraInterface,
-    ) {
-        queue.write_buffer(&self.uniforms, 0, bytemuck::bytes_of(&Uniforms::new(camera)));
+impl Pipeline for MeshPipeline {
+    fn update(&self, device: &wgpu::Device, queue: &wgpu::Queue, camera: &dyn Camera) {
+        queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::bytes_of(&CameraUniform::new(camera)),
+        );
     }
 
     fn draw(&self, target: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
-        if let Some(data) = self.data.as_ref() {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("mesh.pipeline.pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: target,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
+        if self.data.is_empty() {
+            return;
+        }
 
-            // render_pass.set_scissor_rect(
-            //     viewport.x,
-            //     viewport.y,
-            //     viewport.width,
-            //     viewport.height,
-            // );
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("mesh.pipeline.pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
-            render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-
+        for (_id, data) in self.data.iter() {
             render_pass.set_vertex_buffer(0, data.vertex_buffer.slice(..));
             render_pass.set_index_buffer(data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             render_pass.draw_indexed(0..data.num_indices, 0, 0..1);
         }
     }
 
-    fn destroy(&mut self) {
-        if let Some(old) = self.data.as_ref() {
-            old.vertex_buffer.destroy();
-            old.index_buffer.destroy();
+    fn destroy(&self) {
+        for (_id, data) in self.data.iter() {
+            data.vertex_buffer.destroy();
+            data.index_buffer.destroy();
         }
-        self.uniforms.destroy();
+        self.camera_buffer.destroy();
     }
 }
 
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
-struct Uniforms {
-    camera_proj: glam::Mat4,
-    camera_pos: glam::Vec4,
+struct CameraUniform {
+    view_proj: [[f32; 4]; 4],
 }
 
-impl Uniforms {
-    pub fn new(camera: &dyn CameraInterface) -> Self {
-        let camera_proj = camera.build_view_projection_matrix();
-
-        Self {
-            camera_proj,
-            camera_pos: glam::Vec4::new(camera.eye().x, camera.eye().y, camera.eye().z, 1.0),
+impl Default for CameraUniform {
+    fn default() -> Self {
+        CameraUniform {
+            view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
+    }
+}
+impl CameraUniform {
+    pub fn new(camera: &dyn Camera) -> Self {
+        let view_proj = camera.build_view_projection_matrix().to_cols_array_2d();
+
+        // tracing::trace!("{:#?}", view_proj);
+        Self { view_proj }
     }
 }
 

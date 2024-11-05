@@ -20,3 +20,4 @@ serde = { version = "1.0.210", features = ["derive"] }
 bytemuck = { version = "1.18.0", features = ["derive"] }
 tokio = { version = "1.40.0", features = ["default", "macros"] }
 anyhow = "1.0.89"
+tracing-core = "0.1.32"

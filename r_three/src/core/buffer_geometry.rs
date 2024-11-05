@@ -1,5 +1,6 @@
 pub struct BufferGeometry {
     pub position: Vec<glam::Vec3>,
+
 }
 
 impl BufferGeometry {

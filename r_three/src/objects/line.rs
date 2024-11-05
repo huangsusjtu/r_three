@@ -1,12 +1,15 @@
-use crate::core::next_object_id;
-use crate::geometries::{CircleGeometry, Geometry};
-use crate::materials::LineBasicMaterial;
-use crate::vertex::Vertex;
-use crate::{BufferGeometry, Object3D};
-use r_three_macro::{add_object3d_attribute, object3d};
 use std::cell::RefCell;
 use std::f32::consts::PI;
 use std::rc::Rc;
+
+use r_three_macro::{add_object3d_attribute, object3d};
+
+use crate::core::next_object_id;
+use crate::geometries::{CircleGeometry, Geometry};
+use crate::materials::LineBasicMaterial;
+use crate::primitive::MeshPrimitive;
+use crate::vertex::Vertex;
+use crate::{BufferGeometry, Object3D, Primitive};
 
 #[add_object3d_attribute]
 #[derive(object3d)]
@@ -26,6 +29,7 @@ impl Line {
             parent: None,
             children: vec![],
             this: None,
+            primitive: None,
 
             //
             geometry,
@@ -36,7 +40,7 @@ impl Line {
         line
     }
 
-    fn generate(&self) {
+    fn generate(&mut self) {
         let mut vertex: Vec<Vertex> = vec![];
         let mut indices: Vec<u32> = vec![];
 
@@ -110,6 +114,11 @@ impl Line {
             // todo
         } else {
         }
+
+        // 创建数据片元
+        let mut primitive = MeshPrimitive::default();
+        primitive.fill_data(vertex, indices);
+        self.primitive = Some(Rc::new(RefCell::new(Box::new(primitive))));
     }
 }
 
@@ -124,9 +133,3 @@ fn merge_vertex_and_indices(
     });
     vertex.append(&mut vertex_a);
 }
-//
-// impl Renderable for Line {
-//     fn render(&mut self, context: RenderContext) -> anyhow::Result<()> {
-//         Ok(())
-//     }
-// }

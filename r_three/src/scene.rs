@@ -2,6 +2,7 @@ use crate::color::Color;
 use crate::{Object3D, ObjectTree};
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::camera::Camera;
 
 pub struct Scene {
     pub(crate) tree: ObjectTree,

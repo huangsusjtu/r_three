@@ -1,16 +1,20 @@
-use crate::camera::CameraInterface;
-use crate::wgpu::WgpuRenderer;
-use crate::{RendererInterface, Scene};
 use std::sync::{Arc, RwLock};
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
+
+use tracing_subscriber::fmt;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 use winit::application::ApplicationHandler;
 use winit::event::{StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{WindowAttributes, WindowId};
 
+use r_three::{RendererInterface, Scene, UserEvent, WgpuRenderer};
+use r_three::camera::Camera;
+
 pub struct App {
     renderer: Option<WgpuRenderer>,
     scene: Option<Arc<RwLock<Scene>>>,
+    camera: Option<Box<dyn Camera>>,
 }
 
 impl App {
@@ -20,24 +24,29 @@ impl App {
         App {
             renderer: None,
             scene: None,
+            camera: None,
         }
     }
 
-    pub fn attach_scene(&mut self, scene: Arc<RwLock<Scene>>, camera: Box<dyn CameraInterface>) {
+    pub fn attach_scene(&mut self, scene: Arc<RwLock<Scene>>, camera: Box<dyn Camera>) {
         self.scene = Some(scene);
+        self.camera = Some(camera);
     }
 
     fn render(&mut self) {
         if let Some(renderer) = self.renderer.as_mut() {
             if let Some(scene) = self.scene.clone() {
                 let scene = scene.read().unwrap();
-                renderer.render(&scene).expect("renderer panic message");
+                let camera = self.camera.as_ref().unwrap().as_ref();
+                renderer
+                    .render(&scene, camera)
+                    .expect("renderer panic message");
             }
         }
     }
 }
 
-impl ApplicationHandler<crate::UserEvent> for App {
+impl ApplicationHandler<UserEvent> for App {
     fn new_events(&mut self, event_loop: &ActiveEventLoop, _cause: StartCause) {
         tracing::trace!("new_events");
         if self.renderer.is_none() {
@@ -50,7 +59,7 @@ impl ApplicationHandler<crate::UserEvent> for App {
         tracing::trace!("resumed");
     }
 
-    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: crate::UserEvent) {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UserEvent) {
         tracing::trace!("user_event");
         let _ = (event_loop, event);
     }
@@ -65,6 +74,7 @@ impl ApplicationHandler<crate::UserEvent> for App {
                     log::info!("Window minimized!");
                 } else {
                     self.renderer.as_mut().unwrap().resize(physical_size);
+                    self.camera.as_mut().unwrap().set_viewport(physical_size.width as f32, physical_size.height as f32);
                     // window.request_redraw();
                 }
             }
@@ -115,7 +125,7 @@ impl ApplicationHandler<crate::UserEvent> for App {
     }
 }
 
-fn start_event_loop(mut app: App, event_loop: EventLoop<crate::UserEvent>) {
+fn start_event_loop(mut app: App, event_loop: EventLoop<UserEvent>) {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             use winit::platform::web::EventLoopExtWebSys;
@@ -145,7 +155,6 @@ fn init_log() {
     }
 }
 
-//
 // #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 // pub async fn run() {
 //     cfg_if::cfg_if! {
@@ -182,8 +191,8 @@ fn init_log() {
 //                             .map(|body| body.append_child(&web_sys::Element::from(canvas)));
 //                     }
 //                 };
-//                 // winit 0.29 开始，通过 request_inner_size, canvas.set_width 都无法设置 canvas 的大小
-//                 let canvas = window.canvas().unwrap();
+//                 // winit 0.29 开始，通过 request_inner_size, canvas.set_width 都无法设置 canvas
+// 的大小                 let canvas = window.canvas().unwrap();
 //                 let web_height = web_width / ratio;
 //                 let scale_factor = window.scale_factor() as f32;
 //                 canvas.set_width((web_width * scale_factor) as u32);

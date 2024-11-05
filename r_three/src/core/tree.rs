@@ -1,20 +1,19 @@
 use std::cell::RefCell;
 use std::collections::LinkedList;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::core::group::Group;
-use crate::Object3D;
+use crate::{Object3D};
 
 type TreeNode = Rc<RefCell<Box<dyn Object3D>>>;
 
 /// 3d对象树
-pub struct ObjectTree
-{
+pub struct ObjectTree {
     root: TreeNode,
 }
 
-impl ObjectTree
-{
+impl ObjectTree {
     pub fn new() -> Self {
         ObjectTree {
             root: Group::new().to_object(),
@@ -34,14 +33,11 @@ impl ObjectTree
     }
 }
 
-pub struct TreeIterator
-{
+pub struct TreeIterator {
     nodes: LinkedList<TreeNode>,
 }
 
-impl Iterator for TreeIterator
-
-{
+impl Iterator for TreeIterator {
     type Item = TreeNode;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -49,8 +45,7 @@ impl Iterator for TreeIterator
     }
 }
 
-impl IntoIterator for &ObjectTree
-{
+impl IntoIterator for &ObjectTree {
     type Item = TreeNode;
     type IntoIter = TreeIterator;
 

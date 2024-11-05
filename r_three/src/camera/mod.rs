@@ -4,7 +4,7 @@ pub use orthographic_camera::OrthographicCamera;
 mod perspective_camera;
 pub use perspective_camera::PerspectiveCamera;
 
-pub trait CameraInterface {
+pub trait Camera {
     fn r#type(&self) -> &'static str;
     fn build_view_projection_matrix(&self) -> glam::Mat4;
     fn build_projection_matrix(&self) -> glam::Mat4;

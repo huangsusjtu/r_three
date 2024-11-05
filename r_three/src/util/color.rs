@@ -304,3 +304,27 @@ impl From<Vec4> for Color {
         }
     }
 }
+
+
+impl Into<[f32; 3]> for Color {
+    fn into(self) -> [f32; 3] {
+        [self.r as f32, self.g as f32, self.b as f32]
+    }
+}
+
+impl Into<[f32; 4]> for Color {
+    fn into(self) -> [f32; 4] {
+        [self.r as f32, self.g as f32, self.b as f32, self.a as f32]
+    }
+}
+impl Into<Vec3> for Color {
+    fn into(self) -> Vec3 {
+        Vec3::new(self.r as f32, self.g as f32, self.b as f32)
+    }
+}
+
+impl Into<Vec4> for Color {
+    fn into(self) -> Vec4 {
+        Vec4::new(self.r as f32, self.g as f32, self.b as f32, self.a as f32)
+    }
+}

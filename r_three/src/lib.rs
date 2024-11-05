@@ -1,4 +1,4 @@
-pub mod app;
+
 pub mod camera;
 mod core;
 mod event;
@@ -8,13 +8,14 @@ pub mod objects;
 mod scene;
 mod util;
 
-mod renderer;
+pub mod renderer;
 
 pub use core::*;
 pub use event::*;
 pub use renderer::*;
 pub use scene::*;
 pub use util::*;
+
 
 #[cfg(test)]
 mod tests {

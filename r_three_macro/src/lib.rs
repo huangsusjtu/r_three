@@ -106,6 +106,10 @@ pub fn object_3d_derive(input: TokenStream) -> TokenStream {
                 this.borrow_mut().set_this(this.clone());
                 this
             }
+
+            fn to_primitive(&self) -> Option<Rc<RefCell<Box<dyn Primitive>>>> {
+                self.primitive.clone()
+            }
         }
 
     };
@@ -150,6 +154,11 @@ pub fn add_object3d_attribute(args: TokenStream, input: TokenStream) -> TokenStr
                     fields.named.push(
                         syn::Field::parse_named
                             .parse2(quote! { this: Option<Rc<RefCell<Box<dyn Object3D>>>> })
+                            .unwrap(),
+                    );
+                    fields.named.push(
+                        syn::Field::parse_named
+                            .parse2(quote! { primitive: Option<Rc<RefCell<Box<dyn Primitive>>>> })
                             .unwrap(),
                     );
                 }

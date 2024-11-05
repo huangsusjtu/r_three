@@ -1,6 +1,6 @@
 use crate::geometries::Geometry;
-use crate::vertex::Vertex;
 use glam::Vec3;
+use crate::vertex::Vertex;
 
 pub struct BoxGeometry {
     vertices: Vec<Vertex>,

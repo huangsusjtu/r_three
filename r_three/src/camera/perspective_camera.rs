@@ -1,4 +1,4 @@
-use crate::camera::CameraInterface;
+use crate::camera::Camera;
 use glam::Mat4;
 
 #[derive(Clone, Debug)]
@@ -38,7 +38,7 @@ impl PerspectiveCamera {
     }
 }
 
-impl CameraInterface for PerspectiveCamera {
+impl Camera for PerspectiveCamera {
     fn r#type(&self) -> &'static str {
         "Perspective"
     }
